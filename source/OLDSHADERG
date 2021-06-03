@@ -1,0 +1,83 @@
+; Example PICA200 geometry shader
+.gsh point c0
+
+; Uniforms
+.fvec projection[4]
+
+; Constants
+.constf myconst(0.0, 1.0, -1.0, 0.5)
+.alias  zeros myconst.xxxx ; Vector full of zeros
+.alias  ones  myconst.yyyy ; Vector full of ones
+.alias  half  myconst.wwww
+
+; Outputs - this time the type *is* used
+.out outpos position
+.out outtc0 texcoord0
+.out outclr color
+
+.alias vrt1Pos v0
+.alias vrt1Tex v1
+.alias vrt1Col v2
+.alias vrt2Pos v3
+.alias vrt2Tex v4
+.alias vrt2Col v5
+.alias vrt3Pos v6
+.alias vrt3Tex v7
+.alias vrt3Col v8
+
+.entry gmain
+.proc gmain
+
+	; Emit the first triangle
+	mov r0, vrt1Pos
+	mov r1, vrt2Pos
+	mov r2, vrt3Pos
+	call emit_triangle
+
+	; We're finished
+	end
+
+.end
+
+.proc emit_triangle
+	; Emit the first vertex
+	setemit 0
+	mov r7, vrt1Tex
+	mov r8, r0
+	mov r9, vrt1Col
+	call process_vertex
+	emit
+
+	; Emit the second vertex
+	setemit 1
+	mov r7, vrt2Tex
+	mov r8, r1
+	mov r9, vrt2Col
+	call process_vertex
+	emit
+
+	; Emit the third vertex and finish the primitive
+	setemit 2, prim
+	mov r7, vrt3Tex
+	mov r8, r2
+	mov r9, vrt3Col
+	call process_vertex
+	emit
+.end
+
+; Subroutine
+; Inputs:
+;	r7: texture coordinate
+;   r8: vertex position
+;   r9: vertex color
+.proc process_vertex
+	; outpos = projectionMatrix * r8
+	dp4 outpos.x, projection[0], r8
+	dp4 outpos.y, projection[1], r8
+	dp4 outpos.z, projection[2], r8
+	dp4 outpos.w, projection[3], r8
+
+	; outclr = r9
+	mov outclr, r9
+	mov outtc0, r7
+.end
