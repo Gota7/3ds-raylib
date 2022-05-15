@@ -289,7 +289,7 @@
 #if defined(PLATFORM_NX)
     #define GLFW_INCLUDE_NONE
     #include <GLFW/glfw3.h>
-    //#include <glad/glad.h>
+    #include <switch.h>
 #endif
 
 //----------------------------------------------------------------------------------
@@ -763,6 +763,11 @@ void InitWindow(int width, int height, const char *title)
     TRACELOG(LOG_INFO, "    > raudio:.... not loaded (optional)");
 #endif
 
+#if defined(PLATFORM_NX)
+    Result rc = romfsInit();
+    if (R_FAILED(rc)) TRACELOG(LOG_WARNING, "ROMFS failed to load!");
+#endif
+
     if ((title != NULL) && (title[0] != 0)) CORE.Window.title = title;
 
     // Initialize global input state
@@ -1076,6 +1081,10 @@ void CloseWindow(void)
 
 #if defined(SUPPORT_EVENTS_AUTOMATION)
     free(events);
+#endif
+
+#if defined(PLATFORM_NX)
+    romfsExit();
 #endif
 
     CORE.Window.ready = false;
@@ -4853,7 +4862,7 @@ void WaitTime(float ms)
     #if defined(_WIN32)
         Sleep((unsigned int)ms);
     #endif
-    #if defined(__linux__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__)
+    #if defined(__linux__) || defined(__FreeBSD__) || defined(__EMSCRIPTEN__) || defined(__SWITCH__)
         struct timespec req = { 0 };
         time_t sec = (int)(ms/1000.0f);
         ms -= (sec*1000);
