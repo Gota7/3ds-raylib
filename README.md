@@ -1,3 +1,9 @@
+# Nintendo Raylib
+Raylib ports for Nintendo platforms. See each individual example folder for each system for details.
+
+## Bugs
+* Switch: Resolution not changing for docked and handheld mode as well as the window not scaling correctly in some cases.
+
 <img align="left" src="https://github.com/raysan5/raylib/blob/master/logo/raylib_logo_animation.gif" width="288px">
 
 **raylib is a simple and easy-to-use library to enjoy videogames programming.**
