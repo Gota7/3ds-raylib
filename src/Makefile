@@ -12,6 +12,7 @@
 #    PLATFORM_DRM:      Linux native mode, including Raspberry Pi 4 with V3D fkms driver
 #    PLATFORM_WEB:      HTML5 (Chrome, Firefox)
 #    PLATFORM_NX:       Nintendo Switch support
+#    PLATFORM_CTR:      Nintendo 3ds support
 #
 #  Many thanks to Milan Nikolic (@gen2brain) for implementing Android platform pipeline.
 #  Many thanks to Emanuele Petriglia for his contribution on GNU/Linux pipeline.
@@ -42,7 +43,7 @@
 
 # Define required environment variables
 #------------------------------------------------------------------------------------------------
-# Define target platform: PLATFORM_DESKTOP, PLATFORM_RPI, PLATFORM_DRM, PLATFORM_ANDROID, PLATFORM_WEB, PLATFORM_NX
+# Define target platform: PLATFORM_DESKTOP, PLATFORM_RPI, PLATFORM_DRM, PLATFORM_ANDROID, PLATFORM_WEB, PLATFORM_NX, PLATFORM_CTR
 PLATFORM             ?= PLATFORM_DESKTOP
 
 # Define required raylib variables
@@ -184,6 +185,13 @@ ifeq ($(PLATFORM),PLATFORM_NX)
     endif
     USE_EXTERNAL_GLFW = TRUE
 endif
+ifeq ($(PLATFORM),PLATFORM_CTR)
+    UNAMEOS = $(shell uname)
+    ifeq ($(UNAMEOS),Linux)
+        PLATFORM_OS = LINUX
+    endif
+    USE_EXTERNAL_GLFW = TRUE
+endif
 
 ifeq ($(PLATFORM),PLATFORM_WEB)
     # Emscripten required variables
@@ -257,6 +265,10 @@ ifeq ($(PLATFORM),PLATFORM_NX)
     # Only one supported on switch.
     GRAPHICS = GRAPHICS_API_OPENGL_ES2
 endif
+ifeq ($(PLATFORM),PLATFORM_CTR)
+    # Have to use an OpenGL compatible port on 3ds.
+    GRAPHICS = GRAPHICS_API_OPENGL_33
+endif
 
 # Define default C compiler and archiver to pack library: CC, AR
 #------------------------------------------------------------------------------------------------
@@ -310,6 +322,12 @@ ifeq ($(PLATFORM),PLATFORM_NX)
     endif
     include $(DEVKITPRO)/libnx/switch_rules
 endif
+ifeq ($(PLATFORM),PLATFORM_CTR)
+    ifeq ($(strip $(DEVKITARM)),)
+        $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+    endif
+    include $(DEVKITARM)/3ds_rules
+endif
 
 # Define compiler flags: CFLAGS
 #------------------------------------------------------------------------------------------------
@@ -355,6 +373,9 @@ ifeq ($(RAYLIB_BUILD_MODE),RELEASE)
         CFLAGS += -O2
     endif
     ifeq ($(PLATFORM),PLATFORM_NX)
+        CFLAGS += -O2
+    endif
+    ifeq ($(PLATFORM),PLATFORM_CTR)
         CFLAGS += -O2
     endif
 endif
@@ -430,6 +451,11 @@ ifeq ($(PLATFORM),PLATFORM_NX)
     LIBDIRS := $(PORTLIBS) $(LIBNX)
     ARCH    :=  -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIC -ftls-model=local-exec
     CFLAGS  +=  -ffunction-sections $(ARCH) $(foreach dir,$(LIBDIRS),-I$(dir)/include) -D__SWITCH__
+endif
+ifeq ($(PLATFORM),PLATFORM_CTR)
+    LIBDIRS := $(PORTLIBS) $(CTRULIB)
+    ARCH    :=  -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+    CFLAGS  +=  -mword-relocations -ffunction-sections $(ARCH) $(foreach dir,$(LIBDIRS),-I$(dir)/include) -D__3DS__
 endif
 
 # Define include paths for required headers: INCLUDE_PATHS
@@ -510,6 +536,9 @@ endif
 ifeq ($(PLATFORM),PLATFORM_NX)
     LDFLAGS += -specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$*.map $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 endif
+ifeq ($(PLATFORM),PLATFORM_CTR)
+    LDFLAGS += -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map) $(foreach dir,$(LIBDIRS),-L$(dir)/lib)
+endif
 
 # Define libraries required on linking: LDLIBS
 # NOTE: This is only required for dynamic library generation
@@ -547,6 +576,9 @@ ifeq ($(PLATFORM),PLATFORM_ANDROID)
 endif
 ifeq ($(PLATFORM),PLATFORM_NX)
     LDLIBS = -lsdl2 -lEGL -lGLESv2 -lglad -lglfw3 -lglapi -ldrm_nouveau -lnx -lm
+endif
+ifeq ($(PLATFORM),PLATFORM_CTR)
+    LDLIBS = -lsdl2 -lpthread -lctru -lm
 endif
 
 # Define source code object files required
@@ -649,6 +681,14 @@ else
             endif
         endif
         ifeq ($(PLATFORM_OS),PLATFORM_NX)
+            # Compile raylib shared library version $(RAYLIB_VERSION).
+            # WARNING: you should type "make clean" before doing this target
+            $(CC) -shared -o $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION) $(OBJS) $(LDFLAGS) $(LDLIBS)
+            @echo "raylib shared library generated (lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION)) in $(RAYLIB_RELEASE_PATH)!"
+            cd $(RAYLIB_RELEASE_PATH) && ln -fsv lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION) lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_API_VERSION)
+            cd $(RAYLIB_RELEASE_PATH) && ln -fsv lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_API_VERSION) lib$(RAYLIB_LIB_NAME).so
+        endif
+        ifeq ($(PLATFORM_OS),PLATFORM_CTR)
             # Compile raylib shared library version $(RAYLIB_VERSION).
             # WARNING: you should type "make clean" before doing this target
             $(CC) -shared -o $(RAYLIB_RELEASE_PATH)/lib$(RAYLIB_LIB_NAME).so.$(RAYLIB_VERSION) $(OBJS) $(LDFLAGS) $(LDLIBS)

@@ -1,4 +1,4 @@
-#define PLATFORM_NX 1
+#define PLATFORM_CTR 1
 
 /**********************************************************************************************
 *
@@ -14,6 +14,7 @@
 *       - PLATFORM_DRM:     Linux native mode, including Raspberry Pi 4 with V3D fkms driver
 *       - PLATFORM_WEB:     HTML5 with WebAssembly
 *       - PLATFORM_NX:      Nintendo Switch support
+*       - PLATFORM_CTR:     Nintendo 3ds support
 *
 *   CONFIGURATION:
 *
@@ -290,6 +291,10 @@
     #define GLFW_INCLUDE_NONE
     #include <GLFW/glfw3.h>
     #include <switch.h>
+#endif
+
+#if defined(PLATFORM_CTR)
+    #include <3ds.h>
 #endif
 
 //----------------------------------------------------------------------------------
@@ -732,6 +737,14 @@ struct android_app *GetAndroidApp(void)
 // NOTE: data parameter could be used to pass any kind of required data to the initialization
 void InitWindow(int width, int height, const char *title)
 {
+
+#if defined(PLATFORM_CTR)
+    gfxInitDefault();
+    consoleInit(GFX_BOTTOM, NULL);
+    Result rc = romfsInit();
+    if (rc) TRACELOG(LOG_WARNING, "ROMFS failed to load! Err:%08lX", rc);
+#endif
+
     TRACELOG(LOG_INFO, "Initializing raylib %s", RAYLIB_VERSION);
 
     TRACELOG(LOG_INFO, "Supported raylib modules:");
@@ -772,7 +785,9 @@ void InitWindow(int width, int height, const char *title)
 
     // Initialize global input state
     memset(&CORE.Input, 0, sizeof(CORE.Input));
+#if !defined(PLATFORM_CTR)
     CORE.Input.Keyboard.exitKey = KEY_ESCAPE;
+#endif
     CORE.Input.Mouse.scale = (Vector2){ 1.0f, 1.0f };
     CORE.Input.Mouse.cursor = MOUSE_CURSOR_ARROW;
     CORE.Input.Gamepad.lastButtonPressed = -1;
@@ -843,7 +858,7 @@ void InitWindow(int width, int height, const char *title)
         }
     }
 #endif
-#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM) || defined(PLATFORM_NX)
+#if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM) || defined(PLATFORM_NX) || defined(PLATFORM_CTR)
     // Initialize graphics device (display device and OpenGL context)
     // NOTE: returns true if window and graphic device has been initialized successfully
     CORE.Window.ready = InitGraphicsDevice(width, height);
@@ -1087,6 +1102,11 @@ void CloseWindow(void)
     romfsExit();
 #endif
 
+#if defined(PLATFORM_CTR)
+    romfsExit();
+    gfxExit();
+#endif
+
     CORE.Window.ready = false;
     TRACELOG(LOG_INFO, "Window closed successfully");
 }
@@ -1123,6 +1143,10 @@ bool WindowShouldClose(void)
 #if defined(PLATFORM_ANDROID) || defined(PLATFORM_RPI) || defined(PLATFORM_DRM)
     if (CORE.Window.ready) return CORE.Window.shouldClose;
     else return true;
+#endif
+
+#if defined(PLATFORM_CTR)
+    return !aptMainLoop();
 #endif
 }
 
@@ -4686,7 +4710,7 @@ static bool InitGraphicsDevice(int width, int height)
     // NOTE: GL procedures address loader is required to load extensions
 #if defined(PLATFORM_DESKTOP) || defined(PLATFORM_WEB) || defined(PLATFORM_NX)
     rlLoadExtensions(glfwGetProcAddress);
-#else
+#elif !defined(PLATFORM_CTR)
     rlLoadExtensions(eglGetProcAddress);
 #endif
 

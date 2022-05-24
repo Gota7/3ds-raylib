@@ -3724,7 +3724,6 @@ typedef ma_uint16 wchar_t;
     #define MA_SIZE_MAX    0xFFFFFFFF  /* When SIZE_MAX is not defined by the standard library just default to the maximum 32-bit unsigned integer. */
 #endif
 
-
 /* Platform/backend detection. */
 #ifdef _WIN32
     #define MA_WIN32
@@ -3776,6 +3775,10 @@ typedef ma_uint16 wchar_t;
     #endif
     #ifdef __SWITCH__
         #define MA_SWITCH
+        #define MA_NO_RUNTIME_LINKING
+    #endif
+    #ifdef __3DS__
+        #define MA_3DS
         #define MA_NO_RUNTIME_LINKING
     #endif
 #endif
@@ -6095,8 +6098,9 @@ This section contains the APIs for device playback and capture. Here is where yo
 #if defined(MA_EMSCRIPTEN)
     #define MA_SUPPORT_WEBAUDIO
 #endif
-#if defined(MA_SWITCH)
+#if defined(MA_SWITCH) || defined(MA_3DS)
     #define MA_SUPPORT_SDL
+    #define MA_ENABLE_SDL
 #endif
 
 /* All platforms should support custom backends. */
@@ -15472,7 +15476,7 @@ static ma_result ma_thread_create__posix(ma_thread* pThread, ma_thread_priority 
     int result;
     pthread_attr_t* pAttr = NULL;
 
-#if !defined(__EMSCRIPTEN__) && !defined(__SWITCH__)
+#if !defined(__EMSCRIPTEN__) && !defined(__SWITCH__) && !defined(__3DS__)
     /* Try setting the thread priority. It's not critical if anything fails here. */
     pthread_attr_t attr;
     if (pthread_attr_init(&attr) == 0) {
@@ -17085,6 +17089,8 @@ not officially supporting this, but I'm leaving it here in case it's useful for 
             #else
                 #if !__has_include(<SDL2/SDL_audio.h>)
                     #undef MA_HAS_SDL
+                #else
+                    #include <SDL2/SDL.h>
                 #endif
             #endif
         #endif
@@ -38710,8 +38716,6 @@ SDL Backend
 #define MA_SDL_AUDIO_ALLOW_CHANNELS_CHANGE     0x00000004
 #define MA_SDL_AUDIO_ALLOW_ANY_CHANGE          (MA_SDL_AUDIO_ALLOW_FREQUENCY_CHANGE | MA_SDL_AUDIO_ALLOW_FORMAT_CHANGE | MA_SDL_AUDIO_ALLOW_CHANNELS_CHANGE)
 
-#include <SDL2/SDL.h>
-
 typedef int                   (* MA_PFN_SDL_InitSubSystem)(ma_uint32 flags);
 typedef void                  (* MA_PFN_SDL_QuitSubSystem)(ma_uint32 flags);
 typedef int                   (* MA_PFN_SDL_GetNumAudioDevices)(int iscapture);
@@ -39415,7 +39419,7 @@ static ma_result ma_context_init_backend_apis__nix(ma_context* pContext)
     pContext->posix.pthread_cond_signal         = (ma_proc)pthread_cond_signal;
     pContext->posix.pthread_attr_init           = (ma_proc)pthread_attr_init;
     pContext->posix.pthread_attr_destroy        = (ma_proc)pthread_attr_destroy;
-#if !defined(__EMSCRIPTEN__) && !defined(__SWITCH__)
+#if !defined(__EMSCRIPTEN__) && !defined(__SWITCH__) && !defined(__3DS__)
     pContext->posix.pthread_attr_setschedpolicy = (ma_proc)pthread_attr_setschedpolicy;
     pContext->posix.pthread_attr_getschedparam  = (ma_proc)pthread_attr_getschedparam;
     pContext->posix.pthread_attr_setschedparam  = (ma_proc)pthread_attr_setschedparam;

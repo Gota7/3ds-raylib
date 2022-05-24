@@ -518,6 +518,9 @@ typedef enum {
     LOG_NONE            // Disable logging
 } TraceLogLevel;
 
+// Can't define keys for 3DS as it is used for 3ds.h
+#if !defined(__3DS__)
+
 // Keyboard keys (US keyboard layout)
 // NOTE: Use GetKeyPressed() to allow redefining
 // required keys for alternative layouts
@@ -637,6 +640,8 @@ typedef enum {
     KEY_VOLUME_UP       = 24,       // Key: Android volume up button
     KEY_VOLUME_DOWN     = 25        // Key: Android volume down button
 } KeyboardKey;
+
+#endif // __3DS__
 
 // Add backwards compatibility support for deprecated names
 #define MOUSE_LEFT_BUTTON   MOUSE_BUTTON_LEFT
